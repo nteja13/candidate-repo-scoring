@@ -147,3 +147,23 @@ Prediction-score drift therefore passed the prototype monitoring threshold.
 The current batch passes schema, duplicate, missingness, and prediction-score checks. One feature-level warning (`trial_active_users`) warrants investigation but does not by itself justify stopping scoring.
 
 The most important long-term monitoring check requires delayed conversion labels. After the 90-day outcome window, scored accounts should be joined with actual conversion outcomes and ranking quality should be monitored over time. This is necessary to detect the dangerous case where input data and score distributions appear normal while the model's relationship with real conversion outcomes deteriorates.
+
+## Business impact framing
+
+The business decision is not whether an account is definitively "good" or "bad." The decision is which accounts sales representatives should spend limited outreach capacity on next.
+
+Historical data contains 1,200 accounts with 78 conversions, an overall conversion rate of 6.5%. The model's top-ranked 10% contained 32 of the 78 conversions. Therefore, 10% of historical accounts contained approximately 41% of observed conversions, with a 26.67% conversion rate in that group.
+
+As an illustrative capacity scenario, if a representative could work 30 out of a 300-account batch:
+
+- 30 accounts at the historical overall 6.5% rate corresponds to approximately 1.95 conversions.
+- 30 accounts at the historical top-decile 26.67% rate corresponds to approximately 8 conversions.
+- The difference is approximately 6 conversions per 300-account batch.
+
+This is a scenario for estimating potential business value, not a forecast. The ranking analysis is in-sample and the fresh scoring batch has no conversion labels. The hypothesis must be validated prospectively.
+
+A financial estimate can be calculated once Cordilla provides the average economic value of a converted account:
+
+Potential incremental value = incremental conversions × average value per conversion.
+
+False positives consume limited rep capacity on accounts that do not convert. False negatives may cause promising accounts to receive delayed or no outreach. This supports using the model as a prioritization signal with human review rather than as an automatic accept/reject decision.

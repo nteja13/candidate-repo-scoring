@@ -2,6 +2,10 @@ from typing import TypedDict
 import pandas as pd
 from scoring import load_model, load_accounts, score_accounts
 from langgraph.graph import StateGraph, START, END
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+OUTPUT_PATH = PROJECT_ROOT / "agent" / "sales_priority_queue.csv"
 
 
 class SalesAgentState(TypedDict, total=False):
@@ -175,9 +179,12 @@ if __name__ == "__main__":
             "queue_size": 20
         }
     )
+    priority_queue = pd.DataFrame(result["recommendations"])
+    priority_queue.to_csv(OUTPUT_PATH, index=False)
 
     print(f"Total scored accounts: {len(result['accounts'])}")
     print(f"Priority queue size: {len(result['priority_accounts'])}")
+    print(f"\nPriority queue saved to: {OUTPUT_PATH}")
 
     print("\nSales Rep Briefs:")
 
