@@ -3,6 +3,8 @@ import pandas as pd
 from scoring import load_model, load_accounts, score_accounts
 from langgraph.graph import StateGraph, START, END
 from pathlib import Path
+from scoring import load_model, load_accounts, score_accounts
+from llm_mock import generate_brief
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = PROJECT_ROOT / "agent" / "sales_priority_queue.csv"
@@ -126,24 +128,20 @@ def recommend_actions_node(
 def generate_rep_brief_node(
     state: SalesAgentState
 ) -> SalesAgentState:
-    """Generate concise rep-facing briefs from grounded recommendations."""
+    """Generate rep-facing briefs through the mocked LLM boundary."""
     recommendations = state["recommendations"]
 
     rep_briefs = []
 
     for recommendation in recommendations:
-        reasons_text = "; ".join(recommendation["reasons"])
-
-        brief = (
-            f"{recommendation['action']}: "
-            f"{reasons_text}. "
-            f"Suggested next step: {recommendation['next_step']}"
-        )
+        llm_brief = generate_brief(recommendation)
 
         rep_briefs.append(
             {
                 "account_id": recommendation["account_id"],
-                "brief": brief,
+                "brief": llm_brief.brief,
+                "talk_track": llm_brief.talk_track,
+                "generation_source": llm_brief.source,
             }
         )
 
@@ -190,4 +188,5 @@ if __name__ == "__main__":
 
     for item in result["rep_briefs"][:5]:
         print(f"\n{item['account_id']}")
+        print(f"Generation source: {item['generation_source']}")
         print(item["brief"])
