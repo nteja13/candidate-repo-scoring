@@ -1,40 +1,133 @@
-# Cordilla Systems, AI Engineer Exercise — Impact Framing, Agent Build, Monitoring
+# Cordilla Sales Account Prioritization Agent
+
+A lightweight sales prioritization agent that uses Cordilla's existing account-conversion model to turn model scores into an actionable sales work queue.
+
+The solution scores accounts, ranks them against configurable sales capacity, recommends an action, generates grounded rep-facing context, and monitors the scoring pipeline for data-quality and drift issues.
+
+## What the Agent Does
+
+The workflow is implemented with LangGraph:
+
+```text
+Account batch
+    ↓
+Score accounts
+    ↓
+Rank by model score
+    ↓
+Select priority queue
+    ↓
+Recommend action
+    ├── PRIORITIZE_OUTREACH
+    └── FOLLOW_UP
+    ↓
+Generate grounded rep brief
+    ↓
+Sales priority queue
+```
+
+The demo selects the top 20 accounts as the active work queue. Accounts outside the capacity-limited queue are not actioned and effectively remain in nurture until a future scoring cycle.
+
+The generated queue is saved to:
+
+```text
+agent/sales_priority_queue.csv
+```
+
+This CSV acts as the prototype CRM integration boundary. In production, the same output could be written back to Salesforce as tasks or account fields.
+
+## Repository Structure
+
+```text
+candidate-repo-scoring/
+├── agent/
+│   ├── agent.py
+│   ├── scoring.py
+│   └── sales_priority_queue.csv
+├── data/
+│   ├── accounts_to_score.csv
+│   └── training_data.csv
+├── model/
+│   └── model.pkl
+├── monitoring/
+│   ├── data_quality.py
+│   └── drift.py
+├── PROPOSAL.md
+├── RESEARCH-LOG.md
+├── requirements.txt
+└── README.md
+```
 
 ## Setup
 
-    python -m venv .venv
-    source .venv/bin/activate        # Windows: .venv\Scripts\activate
-    pip install -r requirements.txt
+Python 3.11 is recommended.
 
-Tested against Python 3.11+ with the exact pinned versions above. If you'd rather work in a notebook than plain scripts (either is fine, see the take-home packet), `pip install -r requirements-notebook.txt` instead (adds Jupyter on top of the same pinned core).
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Loading the model (already trained, don't retrain it):
+## Run the Agent
 
-    import pickle
-    with open("model/model.pkl", "rb") as f:
-        model = pickle.load(f)
-    # model.predict_proba(df[feature_columns]), feature columns are listed below and in the take-home packet
+From the repository root:
 
-Expected feature columns, in the order the model was trained on: `account_type`, `employee_count`, `industry`, `intent_score`, `mql_count_90d`, `trial_started`, `trial_active_users`, `web_touchpoints_90d`, `sales_contacts_90d`. `snapshot_date` and `account_id` are identifiers, not model inputs.
+```bash
+python agent/agent.py
+```
 
-**Treat 2026-08-01 as "today" for this exercise.** Both CSVs are static snapshots generated as of that date. Any recency/age calculation (e.g. "how old is this account's snapshot") should use 2026-08-01 as the reference point, not your actual system clock.
+The agent:
 
-## What's here
+1. Loads the supplied scikit-learn model.
+2. Scores the 300 accounts in `accounts_to_score.csv`.
+3. Ranks accounts by model score.
+4. Selects a configurable priority queue.
+5. Recommends outreach or follow-up actions.
+6. Generates grounded rep-facing briefs.
+7. Writes the resulting queue to `agent/sales_priority_queue.csv`.
 
-- `model/model.pkl`, a real, already-trained scikit-learn pipeline. Don't retrain it. You don't need to audit it to research rigor, this exercise isn't scored on that, but it's real data worth actually looking at if it changes your impact framing or monitoring design.
-- `data/training_data.csv`, the labeled historical data the model above was actually trained on. Look at it enough to ground your impact-framing numbers and your monitoring design, that's the bar, not a full audit.
-- `data/accounts_to_score.csv`, an unlabeled batch you'll run the model against as part of the agent build. Don't modify or regenerate either CSV; everyone works from the same files.
-- `agent/`, your agent: load the model, score `accounts_to_score.csv`, and build something real that does something with the output. Vague on purpose, see the take-home packet's hints on what we'd minimally want to see (tools/actions, structure, framework choice and why, deployment). Mock any LLM/API calls, no key is provided, see the packet.
-- `monitoring/`, at least one real, concrete monitoring check (a health check, a data-quality assertion, a drift signal, an alert condition). Can live here or be folded into `agent/`, your call. See the packet, this is scored as its own dimension, not a bullet point.
-- `PROPOSAL.md`, your written design proposal covering all three: impact framing, agent design, monitoring design (see the take-home packet for the required sections).
-- `RESEARCH-LOG.md`, your running log as you work: hypotheses, what you tried, dead ends, and specifically what you asked your AI tool and how you used what came back.
+## Run Monitoring
 
-## Working process
+Run the data-quality checks:
 
-Commit as you actually go, small, real commits over time, not one commit at the end. We read the commit history as part of how you reason and work, not just the final diff.
+```bash
+python monitoring/data_quality.py
+```
 
-**We'd genuinely like you to use AI here, assisted coding tools especially (Claude Code, Codex, Cursor, Antigravity, or similar), on your own accounts.** Dialpad doesn't provide one for this exercise. Disclose your actual sessions/prompts in `RESEARCH-LOG.md`, specific enough that we can see what shaped a decision, not a vague "used AI throughout."
+Checks include:
 
-## When you're done
+- Required input columns
+- Duplicate account IDs
+- Intent-score missingness
 
-Push this to a public git repo and send us the link. That's the submission. The presentation gets scheduled as a separate follow-up after that, not something to prepare beforehand.
+Run the drift checks:
+
+```bash
+python monitoring/drift.py
+```
+
+These compare the current scoring batch with historical reference data and report numeric feature drift and prediction-score drift.
+
+Warnings are intended to trigger investigation rather than automatically stop scoring. Structural failures such as missing required input fields should prevent the affected scoring run.
+
+## Key Historical Finding
+
+The historical dataset contains 1,200 accounts with a 6.5% overall 90-day conversion rate.
+
+When ranked by the supplied model, the top 10% of accounts contained approximately 41% of all observed conversions, with a 26.67% conversion rate.
+
+These results are in-sample and are treated as directional evidence for prioritization, not as expected future performance.
+
+## Design Principles
+
+- Use the existing model as a ranking signal rather than a binary decision-maker.
+- Allocate sales attention based on configurable rep capacity rather than an arbitrary probability threshold.
+- Keep scoring and business-action logic separate.
+- Ground recommendations in observed account data.
+- Keep the representative as the final decision-maker.
+- Monitor both the inputs and the model's outputs.
+- Validate ranking quality against actual conversions once 90-day outcomes become available.
+
+See [`PROPOSAL.md`](PROPOSAL.md) for the business case, architecture, deployment approach, and monitoring strategy.
+
+See [`RESEARCH-LOG.md`](RESEARCH-LOG.md) for analysis, hypotheses, AI-assisted research decisions, corrections, and assumptions.
