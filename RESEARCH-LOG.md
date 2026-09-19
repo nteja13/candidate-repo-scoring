@@ -89,3 +89,27 @@ Observed results:
 The historical results suggest that the existing model provides a useful ranking signal. This supports using the model to prioritize a limited sales outreach queue rather than treating every account equally.
 
 These metrics were calculated on the same historical dataset used to train the supplied model. Therefore, they are directional evidence of ranking usefulness and should not be presented as expected future or production performance.
+
+## Agent design decision
+
+### Business decision
+
+The model output will be used to prioritize a limited sales work queue rather than classify accounts as simply good or bad leads.
+
+Historical analysis showed that the top 10% of model-ranked accounts contained approximately 41% of historical conversions, which supports ranking as the primary use of the model.
+
+### Agent actions
+
+The agent will translate model ranking and account context into three operational actions:
+
+- `PRIORITIZE_OUTREACH`: high-ranked account with limited existing sales outreach.
+- `FOLLOW_UP`: high-ranked account where sales engagement is already underway.
+- `NURTURE`: account outside the current priority queue.
+
+The priority queue will be capacity-based rather than using an arbitrary probability threshold.
+
+### Design decision
+
+Model scoring and sales decision logic will remain separate. Deterministic code will handle scoring, ranking, and measurable account signals. The agent layer will orchestrate these components and produce a concise explanation and suggested next step for the sales representative.
+
+This avoids treating the model probability as a guaranteed conversion probability or introducing an unsupported classification threshold.
