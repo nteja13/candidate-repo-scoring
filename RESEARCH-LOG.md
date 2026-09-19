@@ -167,3 +167,46 @@ A financial estimate can be calculated once Cordilla provides the average econom
 Potential incremental value = incremental conversions × average value per conversion.
 
 False positives consume limited rep capacity on accounts that do not convert. False negatives may cause promising accounts to receive delayed or no outreach. This supports using the model as a prioritization signal with human review rather than as an automatic accept/reject decision.
+
+## Final Summary: Key Numbers, Hypotheses, and Assumptions
+
+### Key numbers
+
+- Historical accounts: 1,200
+- Historical 90-day conversions: 78
+- Historical overall conversion rate: 6.5%
+- Historical top 10% by model score: 120 accounts
+- Conversions in historical top 10%: 32
+- Historical top-decile conversion rate: 26.67%
+- Share of historical conversions captured in top 10%: approximately 41%
+- Fresh scoring batch: 300 accounts
+- Demo sales priority queue: 20 accounts
+- Historical intent-score missingness: approximately 40.2%
+- Current intent-score missingness: approximately 38.7%
+- Historical mean model score: approximately 0.0661
+- Current mean model score: approximately 0.0655
+- Current prediction-score relative change: approximately -0.9%
+- Largest observed numeric mean change: `trial_active_users`, approximately -26.5%
+
+### Main hypothesis
+
+If the supplied model continues to rank future accounts meaningfully, directing limited sales capacity toward higher-ranked accounts should concentrate representative effort on accounts with stronger conversion potential.
+
+As an illustrative scenario, 30 accounts at the historical 6.5% overall conversion rate correspond to approximately 1.95 conversions, while 30 accounts at the historical top-decile rate correspond to approximately 8 conversions. The roughly six-conversion difference is a business-value hypothesis, not a forecast.
+
+### Key assumptions
+
+- Historical behavior is sufficiently relevant to use as a reference for the current scoring population.
+- The supplied model remains useful as a ranking signal; no claim is made that its scores are perfectly calibrated probabilities.
+- Historical ranking results are in-sample and must not be treated as prospective performance.
+- The fresh 300-account batch has no conversion labels, so current ranking quality cannot yet be measured.
+- Queue size should ultimately be determined by real sales capacity; 20 accounts is a configurable prototype choice.
+- The 25% feature-drift warning threshold and 60% intent-missingness warning threshold are operational prototype heuristics, not statistically validated thresholds.
+- Missing `intent_score` is expected and should not automatically be interpreted as low intent.
+- The CSV output represents a mocked CRM integration boundary; production deployment would integrate with Salesforce.
+- The rep-facing language generation is deterministic in this prototype; no live LLM call is required.
+- Representatives remain the final decision-makers.
+
+### What should be validated next
+
+After 90-day conversion outcomes become available, join them to the stored scoring results and verify that high-ranked cohorts continue to concentrate conversions. This prospective outcome monitoring is the key safeguard against silent model degradation even when input data and prediction distributions appear stable.
