@@ -113,3 +113,37 @@ The priority queue will be capacity-based rather than using an arbitrary probabi
 Model scoring and sales decision logic will remain separate. Deterministic code will handle scoring, ranking, and measurable account signals. The agent layer will orchestrate these components and produce a concise explanation and suggested next step for the sales representative.
 
 This avoids treating the model probability as a guaranteed conversion probability or introducing an unsupported classification threshold.
+
+## Monitoring implementation
+
+### Data-quality monitoring
+
+Implemented executable checks for:
+
+- Required input columns.
+- Duplicate account IDs.
+- Intent-score missingness.
+
+Historical intent-score missingness is approximately 40.2%, while the current scoring batch is approximately 38.7%. Missing intent values are expected and are handled by the supplied model pipeline.
+
+A prototype warning threshold of 60% missingness is used to detect a substantial deterioration in intent-data coverage. This is an operational heuristic rather than a statistically validated threshold.
+
+### Feature drift
+
+Numeric feature means were compared between the historical reference data and the current scoring batch.
+
+Most features were relatively stable. `trial_active_users` decreased from 0.340 to 0.250, a relative change of approximately -26.5%, which triggered the prototype 25% drift warning threshold.
+
+This warning is treated as a signal for investigation rather than evidence that the model has failed. Relative mean changes can be noisy, particularly for features with small baseline means.
+
+### Prediction drift
+
+The historical mean model score was approximately 0.0661 and the current batch mean score was approximately 0.0655, a relative change of approximately -0.9%.
+
+Prediction-score drift therefore passed the prototype monitoring threshold.
+
+### Monitoring interpretation
+
+The current batch passes schema, duplicate, missingness, and prediction-score checks. One feature-level warning (`trial_active_users`) warrants investigation but does not by itself justify stopping scoring.
+
+The most important long-term monitoring check requires delayed conversion labels. After the 90-day outcome window, scored accounts should be joined with actual conversion outcomes and ranking quality should be monitored over time. This is necessary to detect the dangerous case where input data and score distributions appear normal while the model's relationship with real conversion outcomes deteriorates.
